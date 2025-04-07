@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, FileText, Edit, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, FileText, Edit, Check, AlertCircle, FolderPlus, Folder } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const UploadPDF = () => {
@@ -12,6 +12,86 @@ const UploadPDF = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const [pdfId, setPdfId] = useState(0);
+  
+  // Folder-related state
+  const [folders, setFolders] = useState([]);
+  const [selectedFolderId, setSelectedFolderId] = useState("");
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
+  // Fetch user's folders when component mounts
+  useEffect(() => {
+    fetchFolders();
+  }, []);
+
+  const fetchFolders = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      
+      const response = await fetch('http://localhost:3000/folders', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setFolders(data);
+      
+      // Select the first folder by default if available
+      if (data.length > 0) {
+        setSelectedFolderId(data[0].id.toString());
+      }
+    } catch (err) {
+      console.error('Error fetching folders:', err);
+      setError('Failed to load folders. Please try again.');
+    }
+  };
+
+  const createNewFolder = async () => {
+    try {
+      if (!newFolderName.trim()) {
+        setError('Folder name cannot be empty');
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      
+      const response = await fetch('http://localhost:3000/folders', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ folder: { name: newFolderName } })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+      
+      const newFolder = await response.json();
+      setFolders([...folders, newFolder]);
+      setSelectedFolderId(newFolder.id.toString());
+      setNewFolderName("");
+      setIsCreatingFolder(false);
+      setError(null);
+    } catch (err) {
+      console.error('Error creating folder:', err);
+      setError('Failed to create folder. Please try again.');
+    }
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -51,6 +131,11 @@ const UploadPDF = () => {
   };
   
   const handleProcessPDF = async () => {
+    if (!selectedFolderId) {
+      setError('Please select or create a folder first');
+      return;
+    }
+    
     setIsProcessing(true);
     setError(null);
     
@@ -66,6 +151,7 @@ const UploadPDF = () => {
       formData.append('pdfname', fileName);
       formData.append('pdf_file', uploadedFile);
       formData.append('pdf_size', uploadedFile.size);
+      formData.append('folder_id', selectedFolderId);
       
       // Send the request with authorization header
       const response = await fetch('http://localhost:3000/pdf_handlers', {
@@ -118,6 +204,67 @@ const UploadPDF = () => {
     }
   };
 
+  // Folder selection UI component
+  const renderFolderSelection = () => {
+    return (
+      <div className="w-full mb-6">
+        <h3 className="font-medium text-lg text-gray-900 mb-2">Select Folder</h3>
+        
+        {isCreatingFolder ? (
+          <div className="mb-4">
+            <div className="flex items-center mb-2">
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                placeholder="New folder name"
+              />
+              <button 
+                className="px-4 py-2 bg-purple-600 text-white rounded-r-lg hover:bg-purple-700 transition"
+                onClick={createNewFolder}
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            </div>
+            <button 
+              className="text-sm text-purple-600 hover:text-purple-800"
+              onClick={() => setIsCreatingFolder(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center mb-4">
+            <select
+              value={selectedFolderId}
+              onChange={(e) => setSelectedFolderId(e.target.value)}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none mr-2"
+              disabled={folders.length === 0}
+            >
+              {folders.length === 0 ? (
+                <option value="">No folders available</option>
+              ) : (
+                folders.map(folder => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name} ({folder.pdf_handlers ? folder.pdf_handlers.length : 0} PDFs)
+                  </option>
+                ))
+              )}
+            </select>
+            <button 
+              className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              onClick={() => setIsCreatingFolder(true)}
+            >
+              <FolderPlus className="w-4 h-4 mr-1" />
+              <span>New Folder</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white min-h-screen">
       <div className="max-w-4xl mx-auto p-8">
@@ -164,6 +311,9 @@ const UploadPDF = () => {
                 </button>
               </div>
               <p className="text-sm text-gray-500 mb-6">{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              
+              {/* Add folder selection UI here */}
+              {renderFolderSelection()}
               
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6 text-left">
                 <div className="flex">
@@ -306,19 +456,22 @@ const UploadPDF = () => {
           </div>
           
           <div className="bg-purple-50 rounded-lg p-5 border border-purple-200">
-            <h3 className="font-medium text-purple-800 mb-3">Processing Features</h3>
+            <h3 className="font-medium text-purple-800 mb-3 flex items-center">
+              <Folder className="w-5 h-5 mr-2 text-purple-600" />
+              Folder Organization
+            </h3>
             <ul className="text-sm text-purple-700 space-y-2">
               <li className="flex items-start">
                 <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 mr-2"></div>
-                <span>Text extraction and indexing</span>
+                <span>Group your PDFs in custom folders</span>
               </li>
               <li className="flex items-start">
                 <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 mr-2"></div>
-                <span>Full-text search capabilities</span>
+                <span>Create separate folders for work, studies, projects, etc.</span>
               </li>
               <li className="flex items-start">
                 <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 mr-2"></div>
-                <span>Automatic bookmarking and organization</span>
+                <span>Easily find your documents with organized storage</span>
               </li>
             </ul>
           </div>

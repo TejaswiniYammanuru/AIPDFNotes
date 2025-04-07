@@ -15,4 +15,6 @@ Rails.application.routes.draw do
       get :recent
     end
   end
+  resources :folders
+
 end

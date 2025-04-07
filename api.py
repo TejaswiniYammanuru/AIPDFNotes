@@ -23,18 +23,23 @@ model_name = 'sentence-transformers/all-MiniLM-L6-v2'
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModel.from_pretrained(model_name)
 
-# Initialize Pinecone with proper error handling
+# Initialize Hugging Face API client
+client = InferenceClient(api_key="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")
+
+# Initialize Pinecone - Declare index as a global variable
+index = None
+
+# Setup Pinecone connection
 try:
     pc = Pinecone(api_key="pcsk_4Foh9q_Cnco1gwxKBP6dt7SVCeeFZsC9cHReFEqxu8ffj37GPCDQba6FwfoLCGY6qnRyJv")
     index_name = "aipdfnotes"
     
-    # Check if index exists before creating it
+    # Check if index exists
     existing_indexes = pc.list_indexes().names()
     print(f"Existing indexes: {existing_indexes}")
     
     if index_name not in existing_indexes:
         print(f"Creating new index: {index_name}")
-        # Using the cloud and region directly without ServerlessSpec
         pc.create_index(
             name=index_name,
             dimension=384,
@@ -43,15 +48,13 @@ try:
         # Wait for index to initialize
         time.sleep(10)
     
+    # Assign to global index variable
     index = pc.Index(index_name)
     print(f"Successfully connected to index: {index_name}")
 except Exception as e:
     print(f"Error initializing Pinecone: {e}")
     import traceback
     traceback.print_exc()
-
-# Initialize Hugging Face API client
-client = InferenceClient(api_key="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")
 
 def get_embeddings(texts):
     inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
@@ -79,6 +82,11 @@ def extract_text_from_pdf(file_path):
 
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
+    # Check if index is initialized
+    global index
+    if index is None:
+        return jsonify({"error": "Pinecone index not initialized"}), 500
+
     print("Received upload request")
     pdf_file = request.files.get('pdf_file')
     pdf_id = request.form.get('pdf_id')
@@ -172,6 +180,11 @@ def upload_pdf():
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
+    # Check if index is initialized
+    global index
+    if index is None:
+        return jsonify({"error": "Pinecone index not initialized"}), 500
+
     data = request.json
     pdf_id = data.get('pdf_id')
     question = data.get('question')
@@ -250,6 +263,11 @@ def ask_question():
 
 def get_all_pdf_ids():
     """Get all PDF IDs currently in the Pinecone index"""
+    global index
+    if index is None:
+        print("Warning: Pinecone index not initialized when trying to get PDF IDs")
+        return set()
+        
     try:
         # Use a generic embedding to query
         generic_query = get_embeddings(["general query"])[0]
@@ -274,6 +292,11 @@ def get_all_pdf_ids():
 
 @app.route('/list_pdfs', methods=['GET'])
 def list_pdfs():
+    # Check if index is initialized
+    global index
+    if index is None:
+        return jsonify({"error": "Pinecone index not initialized"}), 500
+
     try:
         pdf_ids = get_all_pdf_ids()
         return jsonify({"pdf_ids": list(pdf_ids)})
@@ -284,6 +307,10 @@ def list_pdfs():
 @app.route('/debug_pdf/<pdf_id>', methods=['GET'])
 def debug_pdf(pdf_id):
     """Endpoint to debug a specific PDF ID"""
+    global index
+    if index is None:
+        return jsonify({"error": "Pinecone index not initialized"}), 500
+
     try:
         pdf_id = pdf_id.strip()
         # Use a generic embedding to query
@@ -321,9 +348,10 @@ def debug_pdf(pdf_id):
 @app.route('/health', methods=['GET'])
 def health_check():
     """Simple health check endpoint to verify the server is running"""
+    global index
     try:
         # Check Pinecone connection
-        pinecone_status = "OK" if index else "Not Connected"
+        pinecone_status = "OK" if index is not None else "Not Connected"
         return jsonify({
             "status": "healthy",
             "pinecone_connection": pinecone_status,
@@ -335,5 +363,25 @@ def health_check():
             "error": str(e)
         }), 500
 
+# Retry Pinecone connection on startup if it failed initially
+def retry_pinecone_connection():
+    global index
+    
+    if index is not None:
+        return  # Already connected
+    
+    try:
+        print("Retrying Pinecone connection...")
+        pc = Pinecone(api_key="pcsk_4Foh9q_Cnco1gwxKBP6dt7SVCeeFZsC9cHReFEqxu8ffj37GPCDQba6FwfoLCGY6qnRyJv")
+        index_name = "aipdfnotes"
+        index = pc.Index(index_name)
+        print(f"Successfully reconnected to Pinecone index: {index_name}")
+    except Exception as e:
+        print(f"Failed to reconnect to Pinecone: {e}")
+
 if __name__ == '__main__':
+    # Retry connection on startup if needed
+    if index is None:
+        retry_pinecone_connection()
+    
     app.run(debug=True, port=5001, host='0.0.0.0')

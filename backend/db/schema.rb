@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_04_01_145941) do
+ActiveRecord::Schema[7.2].define(version: 2025_04_07_103337) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -42,6 +42,14 @@ ActiveRecord::Schema[7.2].define(version: 2025_04_01_145941) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
+  create_table "folders", force: :cascade do |t|
+    t.string "name"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_folders_on_user_id"
+  end
+
   create_table "pdf_handlers", force: :cascade do |t|
     t.string "pdfname"
     t.integer "pdf_size"
@@ -51,6 +59,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_04_01_145941) do
     t.string "file_url"
     t.text "notes"
     t.boolean "is_favorite", default: false
+    t.bigint "folder_id", null: false
+    t.index ["folder_id"], name: "index_pdf_handlers_on_folder_id"
     t.index ["user_id"], name: "index_pdf_handlers_on_user_id"
   end
 
@@ -64,5 +74,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_04_01_145941) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "folders", "users"
+  add_foreign_key "pdf_handlers", "folders"
   add_foreign_key "pdf_handlers", "users"
 end

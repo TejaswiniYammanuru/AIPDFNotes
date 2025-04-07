@@ -8,6 +8,16 @@ class PdfHandlersController < ApplicationController
       return render json: { error: "No PDF file uploaded" }, status: :unprocessable_entity
     end
 
+    if params[:folder_id].blank?
+      return render json: { error: "Folder ID is required" }, status: :unprocessable_entity
+    end
+
+    # Check if the folder exists and belongs to the current user
+    folder = current_user.folders.find_by(id: params[:folder_id])
+    if folder.nil?
+      return render json: { error: "Folder not found" }, status: :not_found
+    end
+
     pdf_url = generate_pdf_url(params[:pdf_file])
     pdf = current_user.pdf_handlers.new(pdf_params.merge(file_url: pdf_url))
 
@@ -18,15 +28,24 @@ class PdfHandlersController < ApplicationController
     end
   end
 
-  # List all PDF handlers for the current user
+  # List all PDF handlers for the current user, filtered by folder if provided
   def index
-    @pdfs = current_user.pdf_handlers
+    if params[:folder_id].present?
+      folder = current_user.folders.find_by(id: params[:folder_id])
+      if folder.nil?
+        return render json: { error: "Folder not found" }, status: :not_found
+      end
+      @pdfs = folder.pdf_handlers
+    else
+      @pdfs = current_user.pdf_handlers
+    end
     
     # Include whether each PDF has notes and its favorite status
     pdfs_with_info = @pdfs.map do |pdf|
       pdf.as_json.merge(
         has_notes: pdf.notes.present?,
-        is_favorite: pdf.is_favorite
+        is_favorite: pdf.is_favorite,
+        folder_name: pdf.folder.name
       )
     end
     
@@ -35,7 +54,13 @@ class PdfHandlersController < ApplicationController
 
   # Show a PDF handler
   def show
-    render json: { pdf: @pdf_handler.as_json.except('file_url').merge(file_url: @pdf_handler.file_url) }
+    render json: { 
+      pdf: @pdf_handler.as_json.except('file_url').merge(
+        file_url: @pdf_handler.file_url,
+        folder_name: @pdf_handler.folder.name,
+        folder_id: @pdf_handler.folder_id
+      )
+    }
   end
 
   # Save notes for a PDF handler
@@ -88,9 +113,13 @@ class PdfHandlersController < ApplicationController
   def favorites
     @favorite_pdfs = current_user.pdf_handlers.where(is_favorite: true)
     
-    # Include whether each PDF has notes
+    # Include whether each PDF has notes and folder information
     pdfs_with_info = @favorite_pdfs.map do |pdf|
-      pdf.as_json.merge(has_notes: pdf.notes.present?)
+      pdf.as_json.merge(
+        has_notes: pdf.notes.present?,
+        folder_name: pdf.folder.name,
+        folder_id: pdf.folder_id
+      )
     end
     
     render json: { pdfs: pdfs_with_info }
@@ -107,16 +136,38 @@ class PdfHandlersController < ApplicationController
                               .order(updated_at: :desc)
                               .limit(limit)
     
-    # Include whether each PDF has notes and its favorite status
+    # Include whether each PDF has notes, its favorite status, and folder information
     pdfs_with_info = @recent_pdfs.map do |pdf|
       pdf.as_json.merge(
         has_notes: pdf.notes.present?,
         is_favorite: pdf.is_favorite,
-        last_modified: pdf.updated_at
+        last_modified: pdf.updated_at,
+        folder_name: pdf.folder.name,
+        folder_id: pdf.folder_id
       )
     end
     
     render json: { pdfs: pdfs_with_info }
+  end
+
+  # Get PDFs by folder
+  def by_folder
+    folder = current_user.folders.find_by(id: params[:folder_id])
+    if folder.nil?
+      return render json: { error: "Folder not found" }, status: :not_found
+    end
+    
+    @pdfs = folder.pdf_handlers
+    
+    pdfs_with_info = @pdfs.map do |pdf|
+      pdf.as_json.merge(
+        has_notes: pdf.notes.present?,
+        is_favorite: pdf.is_favorite,
+        folder_name: folder.name
+      )
+    end
+    
+    render json: { pdfs: pdfs_with_info, folder: folder }
   end
 
   private
@@ -140,9 +191,9 @@ class PdfHandlersController < ApplicationController
     end
 
     "/uploads/#{filename}" 
-  end
+  ends
 
   def pdf_params
-    params.permit(:pdfname, :pdf_size, :is_favorite)
+    params.permit(:pdfname, :pdf_size, :is_favorite, :folder_id, :pdf_file)
   end
 end
