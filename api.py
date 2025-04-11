@@ -242,7 +242,9 @@ def ask_question():
         {'. '.join(relevant_texts)}
         
         Question: {question}
-        Provide a clear answer based solely on the information in the context. If the answer cannot be determined from the context, say so clearly.
+        # Provide a clear answer based solely on the information in the context. If the answer cannot be determined from the context, say so clearly.
+        
+        If the answer cannot be specified from the given context,give from your general knowledge.Dont entirely depend on that relevant texts
         """
 
         print("Sending prompt to Mistral model")

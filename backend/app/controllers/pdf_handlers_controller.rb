@@ -136,7 +136,7 @@ class PdfHandlersController < ApplicationController
                               .order(updated_at: :desc)
                               .limit(limit)
     
-    # Include whether each PDF has notes, its favorite status, and folder information
+   
     pdfs_with_info = @recent_pdfs.map do |pdf|
       pdf.as_json.merge(
         has_notes: pdf.notes.present?,
@@ -191,7 +191,7 @@ class PdfHandlersController < ApplicationController
     end
 
     "/uploads/#{filename}" 
-  ends
+  end
 
   def pdf_params
     params.permit(:pdfname, :pdf_size, :is_favorite, :folder_id, :pdf_file)

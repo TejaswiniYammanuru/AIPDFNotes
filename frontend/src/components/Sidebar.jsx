@@ -91,7 +91,7 @@ const Sidebar = () => {
           collapsed={collapsed}
           active={currentPath === 'notes'}
           onClick={() => handleItemClick('notes')}
-          badge="3"
+          // badge="3"
         />
         
         <SidebarItem 
@@ -147,7 +147,10 @@ const Sidebar = () => {
             icon={<LogOut size={18} />} 
             text="Log Out" 
             collapsed={collapsed}
-            onClick={() => {/* Add logout logic here */}}
+            onClick={() => {
+              localStorage.removeItem("token");
+              navigate("/login")
+            }}
             special={true}
           />
         </div>
