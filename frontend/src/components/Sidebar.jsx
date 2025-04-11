@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   FileText, 
-  Home, 
   Settings, 
   Users, 
   BookOpen, 
@@ -14,6 +13,7 @@ import {
   HelpCircle,
   LogOut
 } from 'lucide-react';
+import pdfpng from "../assets/pdfpng.png";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -30,7 +30,7 @@ const Sidebar = () => {
   };
 
   // Get current path to determine active item
-  const currentPath = location.pathname.split('/').filter(Boolean)[0] || 'dashboard';
+  const currentPath = location.pathname.split('/').filter(Boolean)[0] || 'upload';
 
   return (
     <div 
@@ -42,17 +42,24 @@ const Sidebar = () => {
       <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
         {!collapsed && (
           <div className="flex items-center">
-            <div className="flex justify-center items-center w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg mr-3 shadow-md">
-              <FileText size={18} className="text-white" />
-            </div>
+           <img 
+  src={pdfpng}
+  alt="PDFuse Logo" 
+  className="w-9 h-9 mr-3 object-contain"
+/>
+
             <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-              PDFNotes
+              PDFuse
             </h1>
           </div>
         )}
         {collapsed && (
-          <div className="flex justify-center items-center w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg mx-auto shadow-md">
-            <FileText size={20} className="text-white" />
+          <div className="flex items-center">
+          <img 
+ src={pdfpng}
+ alt="PDFuse Logo" 
+ className="w-9 h-9 mr-3 object-contain"
+/>
           </div>
         )}
         <button 
@@ -68,14 +75,6 @@ const Sidebar = () => {
         <div className={`${!collapsed ? 'px-4 mb-2' : 'text-center mb-2'}`}>
           {!collapsed && <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Main Menu</p>}
         </div>
-        
-        <SidebarItem 
-          icon={<Home size={18} />} 
-          text="Dashboard" 
-          collapsed={collapsed}
-          active={currentPath === 'dashboard'}
-          onClick={() => handleItemClick('dashboard')}
-        />
         
         <SidebarItem 
           icon={<FolderPlus size={18} />} 
@@ -110,13 +109,13 @@ const Sidebar = () => {
           onClick={() => handleItemClick('recent')}
         />
         
-        <SidebarItem 
+        {/* <SidebarItem 
           icon={<Users size={18} />} 
           text="Shared" 
           collapsed={collapsed}
           active={currentPath === 'shared'}
           onClick={() => handleItemClick('shared')}
-        />
+        /> */}
 
         {/* Divider */}
         <div className={`my-3 border-t border-slate-700/50 ${collapsed ? 'mx-3' : 'mx-4'}`}></div>

@@ -19,10 +19,10 @@ const Signup = () => {
     e.preventDefault();
     try {
       const response = await axios.post('http://localhost:3000/signup', formData);
-      alert('Signup successful');
+      // alert('Signup successful');
       console.log(response.data.token);
       localStorage.setItem('token', response.data.token);
-      navigate('/');
+      navigate('/upload');
     } catch (error) {
       console.error('Signup failed', error);
     }
@@ -36,7 +36,7 @@ const Signup = () => {
         <input className="w-full p-3 border rounded mb-4" name="email" placeholder="Email" onChange={handleChange} required />
         <input className="w-full p-3 border rounded mb-4" name="password" type="password" placeholder="Password" onChange={handleChange} required />
         <input className="w-full p-3 border rounded mb-4" name="password_confirmation" type="password" placeholder="Confirm Password" onChange={handleChange} required />
-        <button className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600" type="submit">Sign Up</button>
+        <button className="w-full bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600" type="submit">Sign Up</button>
         <p className="mt-4 text-center">Already have an account? <Link to="/login" className="text-blue-500 hover:underline">Sign in</Link></p>
       </form>
     </div>

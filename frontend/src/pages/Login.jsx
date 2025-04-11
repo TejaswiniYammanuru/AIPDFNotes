@@ -17,10 +17,10 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await axios.post('http://localhost:3000/login', formData);
-      alert('Login successful');
+      // alert('Login successful');
       console.log(response.data.token);
       localStorage.setItem('token', response.data.token);
-      navigate('/');
+      navigate('/upload');
     } catch (error) {
       console.error('Login failed', error);
     }
@@ -32,7 +32,7 @@ const Login = () => {
         <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
         <input className="w-full p-3 border rounded mb-4" name="email" placeholder="Email" onChange={handleChange} required />
         <input className="w-full p-3 border rounded mb-4" name="password" type="password" placeholder="Password" onChange={handleChange} required />
-        <button className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600" type="submit">Login</button>
+        <button className="w-full bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600" type="submit">Login</button>
         <p className="mt-4 text-center">Don't have an account? <Link to="/signup" className="text-blue-500 hover:underline">Sign up</Link></p>
       </form>
     </div>
